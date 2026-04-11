@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const articleController = require('../controllers/articleController');
+const { upload } = require('../middlewares/upload');
 
-// Route de test
 router.get('/test', (req, res) => {
   res.json({ 
     message: 'Route des articles OK',
@@ -10,12 +10,17 @@ router.get('/test', (req, res) => {
   });
 });
 
-// Routes principales
-router.post('/', articleController.createArticle);           // 1. Créer
-router.get('/', articleController.getAllArticles);           // 2. Lire tous
-router.get('/search', articleController.searchArticles);     // 6. Rechercher (AVANT /:id)
-router.get('/:id', articleController.getArticleById);        // 3. Lire un
-router.put('/:id', articleController.updateArticle);         // 4. Modifier
-router.delete('/:id', articleController.deleteArticle);      // 5. Supprimer
+router.post('/', upload.single('image'), articleController.createArticle);
+router.get('/', articleController.getAllArticles);
+router.get('/search', articleController.searchArticles);
+router.get('/stats/global', articleController.getGlobalStats);
+router.get('/top', articleController.getTopArticles);
+router.get('/tags/stats', articleController.getTagsStats);
+router.get('/:id', articleController.getArticleById);
+router.put('/:id', articleController.updateArticle);
+router.delete('/:id', articleController.deleteArticle);
+router.post('/:id/like', articleController.likeArticle);
+router.get('/:id/likes', articleController.getLikesCount);
+router.post('/:id/view', articleController.addView);
 
 module.exports = router;

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - Blog Manager Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 { margin-bottom: 20px; color: #333; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e0e0e0; border-radius: 8px; }
+        button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        a { color: #667eea; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📝 Inscription</h1>
+        <input type="text" id="nom" placeholder="Nom complet">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Mot de passe">
+        <button onclick="register()">S'inscrire</button>
+        <p style="margin-top: 15px;">Déjà un compte ? <a href="/login.html">Se connecter</a></p>
+    </div>
+    <script>
+        async function register() {
+            const nom = document.getElementById('nom').value;
+            const email = document.getElementById('email').value;
+            const motdepasse = document.getElementById('password').value;
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nom, email, motdepasse })
+            });
+            if (res.ok) {
+                alert('Inscription réussie ! Connectez-vous.');
+                window.location.href = '/login.html';
+            } else {
+                alert('Email déjà utilisé');
+            }
+        }
+    </script>
+</body>
+</html>

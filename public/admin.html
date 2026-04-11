@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Blog Manager Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; }
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background: #16213e;
+            position: fixed;
+            padding: 20px;
+        }
+        .sidebar h2 { margin-bottom: 30px; color: #667eea; }
+        .sidebar a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 12px;
+            margin: 5px 0;
+            border-radius: 8px;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .sidebar a:hover, .sidebar a.active { background: #667eea; }
+        .content {
+            margin-left: 250px;
+            padding: 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #2d2d44;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-card h3 { font-size: 2em; color: #667eea; }
+        table {
+            width: 100%;
+            background: #2d2d44;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button.delete { background: #e74c3c; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4caf50;
+            padding: 12px 20px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+        .toast.show { opacity: 1; }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: none;
+        }
+        .form-group { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>📊 Admin Panel</h2>
+        <a href="#" class="active" onclick="showSection('dashboard')">📈 Dashboard</a>
+        <a href="#" onclick="showSection('articles')">📝 Articles</a>
+        <a href="#" onclick="showSection('comments')">💬 Commentaires</a>
+        <a href="#" onclick="showSection('newsletter')">📧 Newsletter</a>
+        <a href="/" target="_blank">🌐 Voir le site</a>
+        <a href="#" onclick="logout()">🚪 Déconnexion</a>
+    </div>
+    <div class="content" id="content">
+        <div id="dashboard"></div>
+        <div id="articles" style="display:none"></div>
+        <div id="comments" style="display:none"></div>
+        <div id="newsletter" style="display:none"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script>
+        let token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login.html';
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.background = isError ? '#e74c3c' : '#4caf50';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function fetchAPI(url, options = {}) {
+            const res = await fetch(url, {
+                ...options,
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...options.headers }
+            });
+            if (res.status === 401) { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+            return res;
+        }
+
+        async function showSection(section) {
+            document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('articles').style.display = 'none';
+            document.getElementById('comments').style.display = 'none';
+            document.getElementById('newsletter').style.display = 'none';
+            document.getElementById(section).style.display = 'block';
+            
+            if (section === 'dashboard') await loadDashboard();
+            if (section === 'articles') await loadArticles();
+            if (section === 'comments') await loadComments();
+            if (section === 'newsletter') loadNewsletterForm();
+        }
+
+        async function loadDashboard() {
+            const stats = await (await fetchAPI('/api/articles/stats/global')).json();
+            const top = await (await fetchAPI('/api/articles/top?limit=5')).json();
+            document.getElementById('dashboard').innerHTML = `
+                <h1>Dashboard</h1>
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>${stats.total_articles || 0}</h3><p>Articles</p></div>
+                    <div class="stat-card"><h3>${stats.total_abonnes || 0}</h3><p>Abonnés</p></div>
+                    <div class="stat-card"><h3>${stats.total_commentaires || 0}</h3><p>Commentaires</p></div>
+                    <div class="stat-card"><h3>${stats.total_likes || 0}</h3><p>Likes</p></div>
+                    <div class="stat-card"><h3>${stats.total_vues || 0}</h3><p>Vues</p></div>
+                </div>
+                <h2>🏆 Top 5 articles</h2>
+                <ul style="margin-left: 20px; margin-bottom: 30px;">${top.map(a => `<li>${a.titre} - ${a.total_vues} vues</li>`).join('')}</ul>
+                <canvas id="chart" style="max-width:600px; background: white; padding: 20px; border-radius: 10px;"></canvas>
+            `;
+            new Chart(document.getElementById('chart'), {
+                type: 'bar',
+                data: { labels: top.map(a => a.titre.substring(0,20)), datasets: [{ label: 'Vues', data: top.map(a => a.total_vues), backgroundColor: '#667eea' }] }
+            });
+        }
+
+        async function loadArticles() {
+            const articles = await (await fetchAPI('/api/articles')).json();
+            document.getElementById('articles').innerHTML = `
+                <h1>📝 Gestion des articles</h1>
+                <table>
+                    <thead><tr><th>Titre</th><th>Auteur</th><th>Vues</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        ${articles.map(a => `<tr><td>${a.titre}</td><td>${a.auteur}</td><td>${a.total_vues || 0}</td><td><button onclick="deleteArticle(${a.id})" class="delete">🗑️ Supprimer</button></td></tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        async function deleteArticle(id) {
+            if (confirm('Supprimer cet article ?')) {
+                await fetchAPI(`/api/articles/${id}`, { method: 'DELETE' });
+                showToast('Article supprimé');
+                loadArticles();
+                loadDashboard();
+            }
+        }
+
+        async function loadComments() {
+            const res = await fetch('/api/comments/pending');
+            const comments = await res.json();
+            if (comments.length === 0) {
+                document.getElementById('comments').innerHTML = `<h1>💬 Commentaires en attente</h1><p>Aucun commentaire en attente</p>`;
+                return;
+            }
+            document.getElementById('comments').innerHTML = `
+                <h1>💬 Commentaires en attente</h1>
+                ${comments.map(c => `<div class="stat-card" style="margin-bottom: 10px;"><strong>${c.pseudo}</strong><p>${c.contenu}</p><button onclick="approveComment(${c.id})">✅ Approuver</button></div>`).join('')}
+            `;
+        }
+
+        async function approveComment(id) {
+            await fetch(`/api/comments/approve/${id}`, { method: 'PUT' });
+            showToast('Commentaire approuvé');
+            loadComments();
+        }
+
+        function loadNewsletterForm() {
+            document.getElementById('newsletter').innerHTML = `
+                <h1>📧 Newsletter</h1>
+                <div class="form-group"><input type="text" id="sujet" placeholder="Sujet" style="background: white; color: black;"></div>
+                <div class="form-group"><textarea id="contenuNews" placeholder="Contenu" rows="5" style="background: white; color: black;"></textarea></div>
+                <button onclick="sendNewsletter()">✉️ Envoyer à tous</button>
+            `;
+        }
+
+        async function sendNewsletter() {
+            const sujet = document.getElementById('sujet').value;
+            const contenu = document.getElementById('contenuNews').value;
+            if (!sujet || !contenu) { showToast('Remplissez tous les champs', true); return; }
+            await fetchAPI('/api/newsletter/send', { method: 'POST', body: JSON.stringify({ sujet, contenu }) });
+            showToast('Newsletter envoyée !');
+            document.getElementById('sujet').value = '';
+            document.getElementById('contenuNews').value = '';
+        }
+
+        function logout() { localStorage.removeItem('token'); window.location.href = '/login.html'; }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

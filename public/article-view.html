@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article - Blog Manager Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        img { max-width: 100%; border-radius: 10px; }
+        .meta { color: #888; margin: 15px 0; }
+        button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; margin: 5px; }
+        .comment { background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 10px 0; }
+        @media (max-width: 600px) { .container { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <div class="container" id="content">Chargement...</div>
+    <script>
+        const id = new URLSearchParams(location.search).get('id');
+        async function load() {
+            const res = await fetch(`/api/articles/${id}`);
+            const article = await res.json();
+            await fetch(`/api/articles/${id}/view`, { method: 'POST' });
+            document.getElementById('content').innerHTML = `
+                ${article.image ? `<img src="${article.image}">` : ''}
+                <h1>${escapeHtml(article.titre)}</h1>
+                <div class="meta">👤 ${escapeHtml(article.auteur)} | 📅 ${article.date} | 👁️ ${article.total_vues || 0}</div>
+                <div>${escapeHtml(article.contenu)}</div>
+                <hr>
+                <h3>💬 Commentaires</h3>
+                <div id="comments"></div>
+                <input type="text" id="pseudo" placeholder="Votre pseudo" style="width:100%; padding:10px; margin:10px 0;">
+                <textarea id="contenu" placeholder="Votre commentaire" rows="3" style="width:100%; padding:10px;"></textarea>
+                <button onclick="addComment()">Publier</button>
+                <button onclick="window.close()">Fermer</button>
+            `;
+            loadComments();
+        }
+        async function loadComments() {
+            const res = await fetch(`/api/comments/article/${id}`);
+            const comments = await res.json();
+            document.getElementById('comments').innerHTML = comments.map(c => `<div class="comment"><strong>${escapeHtml(c.pseudo)}</strong> - ${c.date}<br>${escapeHtml(c.contenu)}</div>`).join('');
+        }
+        async function addComment() {
+            const pseudo = document.getElementById('pseudo').value;
+            const contenu = document.getElementById('contenu').value;
+            if (!pseudo || !contenu) return alert('Remplissez tous les champs');
+            await fetch('/api/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ article_id: id, pseudo, contenu })
+            });
+            alert('Commentaire ajouté !');
+            document.getElementById('contenu').value = '';
+            loadComments();
+        }
+        function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        load();
+    </script>
+</body>
+</html>
