@@ -4,9 +4,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
-  "keywords": [],
+    "dev": "nodemon server.js"  
+},
+"engines": {
+  "node":"20.x"
+}, 
+ "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
